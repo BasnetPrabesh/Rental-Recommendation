@@ -29,3 +29,8 @@ db.sqlite3-journal
 # Database
 *.db
 *.sqlite3
+
+# React / Node
+node_modules/
+build/
+npm-debug.log*
