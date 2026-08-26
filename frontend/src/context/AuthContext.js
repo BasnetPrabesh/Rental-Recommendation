@@ -9,18 +9,14 @@ import React, {
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 
-// ─── axios base URL ────────────────────────────────────────────────────────
 axios.defaults.baseURL = "http://localhost:8000";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null); // decoded JWT payload
-  const [loading, setLoading] = useState(true); // true while we check localStorage
+  const [user, setUser] = useState(null); // decoded JWT: { user_id, username, role, phone_number, exp, … }
+  const [loading, setLoading] = useState(true);
 
-  // ── helpers ──────────────────────────────────────────────────────────────
-
-  /** Attach (or remove) the Authorization header on all future axios calls. */
   const setAxiosToken = useCallback((token) => {
     if (token) {
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -29,13 +25,14 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  /** Decode the access token and store user info in state. */
   const applyToken = useCallback(
     (accessToken) => {
       setAxiosToken(accessToken);
       try {
+        // role + phone_number arrive automatically — the backend's
+        // CustomTokenObtainPairSerializer embeds them as JWT claims.
         const decoded = jwtDecode(accessToken);
-        setUser(decoded); // { user_id, username, exp, … }
+        setUser(decoded);
       } catch {
         setUser(null);
       }
@@ -43,17 +40,14 @@ export function AuthProvider({ children }) {
     [setAxiosToken],
   );
 
-  // ── boot: restore session from localStorage ───────────────────────────────
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        // Check expiry (exp is in seconds)
         if (decoded.exp * 1000 > Date.now()) {
           applyToken(token);
         } else {
-          // Token expired – try a silent refresh
           silentRefresh();
         }
       } catch {
@@ -64,7 +58,6 @@ export function AuthProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── silent token refresh ──────────────────────────────────────────────────
   const silentRefresh = async () => {
     const refresh = localStorage.getItem("refresh_token");
     if (!refresh) {
@@ -82,12 +75,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ── public API ────────────────────────────────────────────────────────────
-
-  /**
-   * Login with username + password.
-   * Returns { success: true } or { success: false, error: "…" }
-   */
   const login = async (username, password) => {
     try {
       const { data } = await axios.post("/api/auth/token/", {
@@ -107,11 +94,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  /**
-   * Register a new account.
-   * userData = { username, email, password, password2 }
-   * Returns { success: true } or { success: false, errors: { field: [msg] } }
-   */
+  /** userData = { username, email, password, password2, role, phone_number } */
   const register = async (userData) => {
     try {
       await axios.post("/api/auth/register/", userData);
@@ -124,7 +107,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  /** Clear everything and redirect to /login. */
   const logout = () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
@@ -133,15 +115,27 @@ export function AuthProvider({ children }) {
   };
 
   const isAuthenticated = !!user;
+  const role = user?.role || null;
+  const isSeeker = role === "seeker";
+  const isLister = role === "lister";
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, isAuthenticated, login, register, logout }}
+      value={{
+        user,
+        loading,
+        isAuthenticated,
+        role,
+        isSeeker,
+        isLister,
+        login,
+        register,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>
   );
 }
 
-/** Convenience hook */
 export const useAuth = () => useContext(AuthContext);

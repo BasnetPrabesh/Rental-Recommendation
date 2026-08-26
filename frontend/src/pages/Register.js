@@ -1,9 +1,8 @@
 // src/pages/Register.js
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-// ← Field must be OUTSIDE Register, not inside it
 const Field = ({
   name,
   label,
@@ -12,25 +11,25 @@ const Field = ({
   value,
   onChange,
   error,
+  required = true,
+  helper,
 }) => (
   <div>
-    <label className="block text-sm font-medium text-stone-700 mb-1">
-      {label}
+    <label className="block text-sm font-medium text-primary mb-1.5">
+      {label}{" "}
+      {helper && <span className="text-muted font-normal">{helper}</span>}
     </label>
     <input
       type={type}
       name={name}
       value={value}
       onChange={onChange}
-      required
-      className={`w-full border rounded-lg px-3 py-2 text-sm
-                  focus:outline-none focus:ring-2 focus:border-transparent transition
-                  ${
-                    error
-                      ? "border-red-400 focus:ring-red-300"
-                      : "border-stone-300 focus:ring-stone-400"
-                  }`}
+      required={required}
       placeholder={placeholder}
+      className={`w-full border rounded-xl px-4 py-2.5 text-sm bg-surface
+                  focus:outline-none focus:ring-2 focus:border-transparent transition
+                  placeholder:text-muted/60
+                  ${error ? "border-red-400 focus:ring-red-300" : "border-border focus:ring-accent"}`}
     />
     {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
   </div>
@@ -39,18 +38,25 @@ const Field = ({
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // LandingPage sets state={{ role: "lister" }} for the "Listing a property" card
+  const initialRole = location.state?.role === "lister" ? "lister" : "seeker";
 
   const [form, setForm] = useState({
     username: "",
     email: "",
     password: "",
     password2: "",
+    role: initialRole,
+    phone_number: "",
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const setRole = (role) => setForm((prev) => ({ ...prev, role }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,30 +72,63 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-surface flex items-center justify-center px-4 py-10">
+      <div
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, #D9770620 1px, transparent 0)",
+          backgroundSize: "32px 32px",
+        }}
+      />
+
+      <div className="relative w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-stone-800 tracking-tight">
-            RoomFinder
-          </h1>
-          <p className="text-stone-500 mt-1 text-sm">
-            Create your free account
-          </p>
+          <Link to="/landing" className="inline-flex items-center gap-2 mb-3">
+            <span className="text-3xl">🏠</span>
+            <span className="text-2xl font-bold text-primary tracking-tight">
+              RoomFinder
+            </span>
+          </Link>
+          <p className="text-muted text-sm">Create your free account</p>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-2xl shadow-sm border border-stone-200 p-8 space-y-5"
-        >
-          <h2 className="text-xl font-semibold text-stone-800">
-            Create account
-          </h2>
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-8 space-y-5">
+          <h2 className="text-xl font-semibold text-primary">Create account</h2>
 
           {errors.non_field_errors && (
-            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
               {errors.non_field_errors[0]}
             </div>
           )}
+
+          {/* Role toggle */}
+          <div>
+            <label className="block text-sm font-medium text-primary mb-1.5">
+              I am a…
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setRole("seeker")}
+                className={`px-3 py-2.5 rounded-xl text-sm font-semibold border transition
+                            ${form.role === "seeker" ? "bg-accent text-white border-accent" : "bg-surface border-border text-muted hover:border-accent"}`}
+              >
+                🔍 Room seeker
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole("lister")}
+                className={`px-3 py-2.5 rounded-xl text-sm font-semibold border transition
+                            ${form.role === "lister" ? "bg-accent text-white border-accent" : "bg-surface border-border text-muted hover:border-accent"}`}
+              >
+                🏘️ Property lister
+              </button>
+            </div>
+            {errors.role && (
+              <p className="mt-1 text-xs text-red-600">{errors.role[0]}</p>
+            )}
+          </div>
 
           <Field
             name="username"
@@ -107,6 +146,21 @@ export default function Register() {
             value={form.email}
             onChange={handleChange}
             error={errors.email?.[0]}
+          />
+          <Field
+            name="phone_number"
+            label="Phone number"
+            type="tel"
+            placeholder="98XXXXXXXX"
+            value={form.phone_number}
+            onChange={handleChange}
+            error={errors.phone_number?.[0]}
+            required={form.role === "lister"}
+            helper={
+              form.role === "lister"
+                ? "(required — shown to confirmed visitors)"
+                : "(optional)"
+            }
           />
           <Field
             name="password"
@@ -128,25 +182,26 @@ export default function Register() {
           />
 
           <button
-            type="submit"
+            type="button"
+            onClick={handleSubmit}
             disabled={loading}
-            className="w-full bg-stone-800 hover:bg-stone-700 disabled:bg-stone-400
-                       text-white font-medium rounded-lg py-2.5 text-sm
-                       transition focus:outline-none focus:ring-2 focus:ring-stone-500 focus:ring-offset-1"
+            className="w-full bg-accent hover:bg-accent-hover disabled:bg-border
+                       text-white font-semibold rounded-xl py-2.5 text-sm
+                       transition-all duration-200 shadow-sm"
           >
             {loading ? "Creating account…" : "Create account"}
           </button>
 
-          <p className="text-center text-sm text-stone-500">
+          <p className="text-center text-sm text-muted">
             Already have an account?{" "}
             <Link
               to="/login"
-              className="text-stone-800 font-medium hover:underline"
+              className="text-accent font-semibold hover:underline"
             >
               Sign in
             </Link>
           </p>
-        </form>
+        </div>
       </div>
     </div>
   );

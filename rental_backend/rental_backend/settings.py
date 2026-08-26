@@ -126,6 +126,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
 ]
 
+# Lets frontend JS (axios/fetch) read this custom response header —
+# browsers hide non-"simple" response headers from JS by default unless
+# the server explicitly allows it here.
+CORS_EXPOSE_HEADERS = [
+    "X-Corrected-Query",
+]
+
 # JWT Configuration
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
@@ -144,3 +151,10 @@ REST_FRAMEWORK = {
     "rest_framework.permissions.IsAuthenticated",
 ),
 }
+# Add these lines to rental_backend/settings.py
+
+import os
+
+# Media files (uploaded images)
+MEDIA_URL  = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
